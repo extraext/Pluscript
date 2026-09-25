@@ -26,5 +26,5 @@ The app includes the following features and architecture:
 - Integrated Previewers: live sandboxed rendering for HTML, token inspection for XML, and a full markdown renderer.
 ---
 ### 5. Themes and User Preferences
-- Multiple dark and light themes (Dark Slate, Light, Vivid Dark, Monokai, Nord,).
+- Multiple dark and light themes (Dark Slate, Light, Vivid Dark, Monokai, Nord).
 - Customization menu to adjust font sizes, word wrap, auto-save, and color schemes.
