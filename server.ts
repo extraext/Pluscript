@@ -195,45 +195,128 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
     // Send token back to parent window using postMessage and close popup
     res.send(`
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
         <head>
+          <meta charset="UTF-8" />
           <title>Pluscript - GitHub Connected</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+          <meta name="theme-color" content="#0a0b0e" />
+          <meta name="color-scheme" content="dark" />
+          <meta name="mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
           <style>
+            * {
+              box-sizing: border-box;
+              -webkit-tap-highlight-color: transparent;
+            }
             body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              background-color: #0d1117;
-              color: #c9d1d9;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              background-color: #0a0b0e;
+              background-image: radial-gradient(circle at 50% 15%, rgba(139, 92, 246, 0.15) 0%, rgba(10, 11, 14, 1) 75%);
+              color: #f1f5f9;
               display: flex;
               flex-direction: column;
               align-items: center;
               justify-content: center;
-              height: 100vh;
+              min-height: 100vh;
+              min-height: 100dvh;
               margin: 0;
+              padding: 16px;
             }
             .card {
-              background: #161b22;
-              border: 1px solid #30363d;
-              border-radius: 12px;
-              padding: 24px;
+              background: #121316;
+              border: 1px solid rgba(139, 92, 246, 0.3);
+              border-radius: 20px;
+              padding: 28px 20px;
               text-align: center;
-              max-width: 320px;
-              box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+              width: 100%;
+              max-width: 360px;
+              box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(139, 92, 246, 0.1);
+              display: flex;
+              flex-direction: column;
+              align-items: center;
             }
-            .success {
-              color: #3fb950;
-              font-size: 24px;
-              margin-bottom: 8px;
+            .icon-wrap {
+              width: 54px;
+              height: 54px;
+              border-radius: 16px;
+              background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.1));
+              border: 1px solid rgba(34, 197, 94, 0.4);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin-bottom: 16px;
+              color: #4ade80;
+            }
+            .title {
+              font-size: 19px;
+              font-weight: 700;
+              color: #ffffff;
+              margin: 0 0 8px 0;
+              letter-spacing: -0.02em;
+            }
+            .desc {
+              margin: 0 0 20px 0;
+              font-size: 13.5px;
+              line-height: 1.5;
+              color: #94a3b8;
+            }
+            .btn-primary {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 100%;
+              height: 46px;
+              background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+              color: #ffffff;
+              border: none;
+              border-radius: 12px;
+              font-weight: 600;
+              font-size: 14.5px;
+              cursor: pointer;
+              box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+              text-decoration: none;
+              transition: transform 0.1s ease, opacity 0.2s ease;
+            }
+            .btn-primary:active {
+              transform: scale(0.98);
+              opacity: 0.9;
+            }
+            .btn-secondary {
+              margin-top: 10px;
+              background: transparent;
+              color: #94a3b8;
+              border: 1px solid rgba(255, 255, 255, 0.1);
+              width: 100%;
+              height: 38px;
+              border-radius: 10px;
+              font-size: 13px;
+              font-weight: 500;
+              cursor: pointer;
+            }
+            .btn-secondary:active {
+              background: rgba(255, 255, 255, 0.05);
             }
           </style>
         </head>
         <body>
           <div class="card" id="statusCard">
-            <div class="success">✓ Connected!</div>
-            <p id="statusMsg" style="margin: 8px 0 0 0; font-size: 14px; line-height: 1.4;">Connecting to Pluscript...</p>
-            <button id="closeBtn" onclick="window.close()" style="display:none; margin-top: 16px; background: #238636; color: white; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer;">
-              Close Tab
-            </button>
+            <div class="icon-wrap">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <div class="title">Connected to GitHub!</div>
+            <p id="statusMsg" class="desc">GitHub account authenticated. Returning to Pluscript...</p>
+            <div id="btnGroup" style="width: 100%; display: none; flex-direction: column;">
+              <button class="btn-primary" id="returnBtn" onclick="handleReturn()">
+                Return to Pluscript
+              </button>
+              <button class="btn-secondary" onclick="window.close()">
+                Close Tab
+              </button>
+            </div>
           </div>
           <script>
             const token = ${JSON.stringify(accessToken)};
@@ -241,6 +324,11 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
             const targetUrl = returnOrigin
               ? (returnOrigin.replace(/\/$/, '') + '/?github_token=' + encodeURIComponent(token))
               : ('/?github_token=' + encodeURIComponent(token));
+
+            function handleReturn() {
+              try { window.close(); } catch(e) {}
+              window.location.replace(targetUrl);
+            }
 
             try {
               localStorage.setItem('pluscript_github_token', token);
@@ -273,27 +361,25 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
                   try { window.close(); } catch(e) {}
                 }, 250);
 
-                // If popup is still open after 500ms (browser blocked script closing the window):
-                // Do NOT redirect this popup to targetUrl (which opens a duplicate frozen app)!
-                // Just display a friendly 'Close Tab' button so the user can close this tab and return to Pluscript.
+                // If popup / new tab is still open after 400ms:
+                // Show mobile-friendly buttons so the user can easily tap Return to Pluscript or Close Tab
                 setTimeout(() => {
                   const msg = document.getElementById('statusMsg');
-                  const btn = document.getElementById('closeBtn');
-                  if (msg) msg.textContent = 'Authenticated! You can now close this tab and return to Pluscript.';
-                  if (btn) btn.style.display = 'inline-block';
-                }, 500);
+                  const btnGroup = document.getElementById('btnGroup');
+                  if (msg) msg.textContent = 'Account authenticated! Tap below to return to your editor session.';
+                  if (btnGroup) btnGroup.style.display = 'flex';
+                }, 400);
               } else {
-                // No opener: this was a direct navigation in the same tab (e.g. mobile redirect)
+                // No opener: direct navigation in the same tab (standard mobile flow)
                 setTimeout(() => {
                   window.location.replace(targetUrl);
-                }, 400);
+                }, 350);
               }
             } catch (err) {
               console.error('Error posting message to opener:', err);
-              // Fallback redirect if opener post failed
               setTimeout(() => {
                 window.location.replace(targetUrl);
-              }, 500);
+              }, 400);
             }
           </script>
         </body>
