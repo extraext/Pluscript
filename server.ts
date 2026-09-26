@@ -8,6 +8,7 @@ import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -18,7 +19,24 @@ const app = express();
 const server = http.createServer(app);
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
-app.use(express.json({ limit: '10mb' }));
+// Parse JSON and URL-encoded bodies while preserving raw bytes buffer for HMAC validation
+app.use(
+  express.json({
+    limit: '10mb',
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    }
+  })
+);
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: '10mb',
+    verify: (req: any, _res, buf) => {
+      if (!req.rawBody) req.rawBody = buf;
+    }
+  })
+);
 
 // Helper to determine base URL
 function getBaseUrl(req: express.Request): string {
@@ -277,8 +295,121 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
 
 app.get(['/auth/callback', '/auth/callback/'], callbackHandler);
 
-// 3. GitHub Proxy Routes (supports Bearer token passed in headers)
-app.use('/api/github', async (req, res) => {
+// 3. GitHub Marketplace Webhook Endpoint
+// Verified using HMAC-SHA256 signature in X-Hub-Signature-256 header.
+// Must be defined BEFORE the generic /api/github proxy route.
+const webhookHandler = (req: any, res: express.Response) => {
+  const signature = req.headers['x-hub-signature-256'] as string;
+  const webhookSecret = process.env.WEBHOOK_SECRET || process.env.GITHUB_WEBHOOK_SECRET;
+
+  if (!signature || typeof signature !== 'string') {
+    console.warn('[GitHub Webhook Warning] Webhook request missing X-Hub-Signature-256 header.');
+    return res.status(401).json({
+      error: 'Missing X-Hub-Signature-256 header'
+    });
+  }
+
+  if (!webhookSecret) {
+    console.error('[GitHub Webhook Error] WEBHOOK_SECRET is not configured in server environment variables.');
+    return res.status(500).json({
+      error: 'Server webhook secret is not configured in environment variables'
+    });
+  }
+
+  // Obtain raw body buffer for HMAC calculation
+  const rawBody: Buffer =
+    req.rawBody ||
+    (typeof req.body === 'string'
+      ? Buffer.from(req.body)
+      : Buffer.from(JSON.stringify(req.body || {})));
+
+  const hmac = crypto.createHmac('sha256', webhookSecret);
+  const expectedSignature = 'sha256=' + hmac.update(rawBody).digest('hex');
+
+  const sigBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expectedSignature);
+
+  if (
+    sigBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(sigBuffer, expectedBuffer)
+  ) {
+    console.warn('[GitHub Webhook Warning] Signature verification failed. Computed digest does not match header.');
+    return res.status(401).json({
+      error: 'Invalid signature. Request rejected.'
+    });
+  }
+
+  const githubEvent = (req.headers['x-github-event'] as string) || 'marketplace_purchase';
+
+  // Handle GitHub initial test ping
+  if (githubEvent === 'ping') {
+    console.log('[GitHub Webhook] Ping event received successfully from GitHub:', req.body?.zen || 'ok');
+    return res.status(200).json({
+      received: true,
+      message: 'Ping event verified and received successfully.'
+    });
+  }
+
+  // Parse marketplace_purchase event payload
+  const { action, marketplace_purchase, sender } = req.body || {};
+  const accountLogin =
+    marketplace_purchase?.account?.login || sender?.login || 'unknown';
+  const accountType = marketplace_purchase?.account?.type || 'User';
+  const planName = marketplace_purchase?.plan?.name || 'Free';
+  const planId = marketplace_purchase?.plan?.id;
+
+  console.log(
+    `[GitHub Marketplace Webhook] Verified event: ${githubEvent} | Action: ${action} | Account: ${accountLogin} (${accountType}) | Plan: ${planName} (ID: ${planId})`
+  );
+
+  switch (action) {
+    case 'purchased':
+      console.log(`[GitHub Marketplace] Account "${accountLogin}" purchased/installed plan "${planName}".`);
+      break;
+    case 'cancelled':
+      console.log(`[GitHub Marketplace] Account "${accountLogin}" cancelled plan subscription.`);
+      break;
+    case 'changed':
+      console.log(`[GitHub Marketplace] Account "${accountLogin}" changed plan to "${planName}".`);
+      break;
+    case 'pending_change':
+      console.log(`[GitHub Marketplace] Account "${accountLogin}" pending change to plan "${planName}".`);
+      break;
+    case 'pending_change_cancelled':
+      console.log(`[GitHub Marketplace] Account "${accountLogin}" cancelled pending change.`);
+      break;
+    default:
+      console.log(`[GitHub Marketplace] Received action: "${action}" for account "${accountLogin}".`);
+      break;
+  }
+
+  // 200 OK acknowledges successful receipt to GitHub
+  return res.status(200).json({
+    received: true,
+    event: githubEvent,
+    action: action || null,
+    account: accountLogin
+  });
+};
+
+app.post(['/api/webhook', '/api/github/webhook', '/webhook'], webhookHandler);
+
+// Informational GET endpoint for testing/uptime monitors
+app.get(['/api/webhook', '/api/github/webhook', '/webhook'], (_req, res) => {
+  res.status(200).json({
+    status: 'active',
+    endpoint: '/api/webhook',
+    description: 'GitHub Marketplace Webhook receiver. Send POST requests with X-Hub-Signature-256 header.'
+  });
+});
+
+// 4. GitHub Proxy Routes (supports Bearer token passed in headers)
+app.use('/api/github', async (req, res, next) => {
+  // Explicitly ignore any webhook requests
+  if (req.path === '/webhook' || req.path.startsWith('/webhook') || req.url.includes('webhook')) {
+    return next();
+  }
+
   const token = req.headers.authorization?.replace(/^Bearer\s+/i, '') || '';
   const targetPath = req.url.replace(/^\//, '');
   const githubApiUrl = `https://api.github.com/${targetPath}`;

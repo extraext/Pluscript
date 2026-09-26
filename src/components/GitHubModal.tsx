@@ -21,13 +21,8 @@ import {
   RefreshCw,
   LogOut,
   GitBranch,
-  Check,
   AlertCircle,
-  ArrowLeft,
-  Sparkles,
-  Download,
-  Copy,
-  Info
+  ArrowLeft
 } from 'lucide-react';
 import { EditorTheme, GitHubUser, GitHubRepo, GitHubTreeItem, ScriptFile } from '../types/editor';
 import {
@@ -64,8 +59,6 @@ export const GitHubModal: React.FC<Props> = ({
   const [isLoadingUser, setIsLoadingUser] = useState(false);
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copiedCallback, setCopiedCallback] = useState(false);
-  const [showOAuthHelp, setShowOAuthHelp] = useState(false);
 
   // Active Selected Repo & Tree Explorer State
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
@@ -82,16 +75,6 @@ export const GitHubModal: React.FC<Props> = ({
 
   // Filter repositories
   const [repoSearch, setRepoSearch] = useState('');
-
-  const currentCallbackUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '';
-
-  const handleCopyCallback = () => {
-    if (currentCallbackUrl) {
-      navigator.clipboard.writeText(currentCallbackUrl);
-      setCopiedCallback(true);
-      setTimeout(() => setCopiedCallback(false), 2000);
-    }
-  };
 
   // Load user info and repos if token exists
   const loadUserData = useCallback(async () => {
@@ -241,18 +224,22 @@ export const GitHubModal: React.FC<Props> = ({
   }, [token, user, isLoadingUser, loadUserData]);
 
   // Initiate OAuth connect
-  const handleConnectOAuth = async (omitRedirectUri = false) => {
+  const handleConnectOAuth = async () => {
     setError(null);
     try {
       const originParam = encodeURIComponent(window.location.origin);
-      const urlEndpoint = omitRedirectUri
-        ? '/api/auth/github/url?omit_redirect_uri=true'
-        : `/api/auth/github/url?origin=${originParam}`;
-      const res = await fetch(urlEndpoint);
+      const res = await fetch(`/api/auth/github/url?origin=${originParam}`);
       const data = await res.json();
 
       if (!res.ok || !data.url) {
         throw new Error(data.error || 'Failed to get OAuth authorization URL.');
+      }
+
+      // On mobile devices or narrow screens, redirect directly in the same tab for smooth authentication
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 640;
+      if (isMobile) {
+        window.location.href = data.url;
+        return;
       }
 
       const authWindow = window.open(
@@ -262,12 +249,12 @@ export const GitHubModal: React.FC<Props> = ({
       );
 
       if (!authWindow) {
-        setError('Popup was blocked by your browser. Please allow popups or use a Personal Access Token below.');
+        window.location.href = data.url;
       }
     } catch (err: any) {
       setError(
         err?.message ||
-        'OAuth initiation failed. If GITHUB_CLIENT_ID is not configured, you can connect instantly using a Personal Access Token below.'
+        'OAuth connection failed. You can also connect instantly using a Personal Access Token below.'
       );
     }
   };
@@ -518,64 +505,14 @@ export const GitHubModal: React.FC<Props> = ({
                 </div>
 
                 {/* Connect Buttons */}
-                <div className="w-full space-y-3">
+                <div className="w-full space-y-3.5">
                   <button
-                    onClick={() => handleConnectOAuth(false)}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-semibold shadow-md active:scale-95 transition-all bg-[#24292f] hover:bg-[#2f363d] text-white border border-white/10"
+                    onClick={handleConnectOAuth}
+                    className="w-full flex items-center justify-center gap-2.5 rounded-xl py-3 px-4 text-xs font-semibold shadow-md active:scale-95 transition-all bg-[#24292f] hover:bg-[#2f363d] text-white border border-white/10"
                   >
                     <Github className="h-4 w-4" />
-                    <span>Connect with GitHub OAuth</span>
+                    <span>Connect with GitHub</span>
                   </button>
-
-                  {/* OAuth App Callback Info Helper */}
-                  <div
-                    className="rounded-xl border p-2.5 text-left text-[11px] space-y-1.5"
-                    style={{
-                      backgroundColor: theme.surface,
-                      borderColor: theme.surfaceBorder
-                    }}
-                  >
-                    <div className="flex items-center justify-between font-semibold" style={{ color: theme.text }}>
-                      <span className="flex items-center gap-1.5">
-                        <Info className="h-3.5 w-3.5 text-sky-400" />
-                        <span>OAuth App Callback URL</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleCopyCallback}
-                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 hover:bg-sky-500/20 active:scale-95 transition-all text-[10px]"
-                      >
-                        {copiedCallback ? (
-                          <>
-                            <Check className="h-2.5 w-2.5 text-emerald-400" />
-                            <span className="text-emerald-400 font-semibold">Copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-2.5 w-2.5" />
-                            <span>Copy URL</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <p className="text-[10px] leading-tight" style={{ color: theme.textMuted }}>
-                      In GitHub Developer Settings &gt; OAuth Apps, set the <strong>Authorization callback URL</strong> to:
-                    </p>
-                    <div className="font-mono text-[10px] p-1.5 rounded bg-black/30 border border-white/5 break-all text-sky-300 select-all">
-                      {currentCallbackUrl || `${window.location.origin}/auth/callback`}
-                    </div>
-                    <div className="pt-1 flex items-center justify-between text-[10px]">
-                      <span style={{ color: theme.textMuted }}>Seeing redirect_uri warning?</span>
-                      <button
-                        type="button"
-                        onClick={() => handleConnectOAuth(true)}
-                        className="text-sky-400 hover:underline font-medium"
-                        title="Omits redirect_uri parameter so GitHub redirects to whatever URL is saved in your OAuth app"
-                      >
-                        Connect using registered callback &rarr;
-                      </button>
-                    </div>
-                  </div>
 
                   <div className="flex items-center gap-2 pt-1">
                     <div className="flex-1 border-t" style={{ borderColor: theme.surfaceBorder }} />

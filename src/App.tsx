@@ -890,7 +890,7 @@ export default function App() {
     >
       {/* Header Bar */}
       <header
-        className="flex h-12 sm:h-13 w-full items-center justify-between border-b px-2.5 sm:px-3 transition-colors shrink-0 z-20"
+        className="flex h-12 sm:h-13 w-full items-center justify-between border-b px-2 sm:px-3 transition-colors shrink-0 z-20 gap-1 sm:gap-2"
         style={{
           backgroundColor: activeTheme.headerBg,
           borderColor: activeTheme.surfaceBorder
@@ -900,7 +900,7 @@ export default function App() {
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={() => setIsDrawerOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-all active:scale-95 shrink-0"
+            className="flex h-8 w-8 min-w-8 items-center justify-center rounded-lg transition-all active:scale-95 shrink-0"
             style={{
               backgroundColor: activeTheme.surface,
               color: activeTheme.text
@@ -911,7 +911,7 @@ export default function App() {
           </button>
 
           <span
-            className="font-bitter font-bold text-base tracking-tight leading-none shrink-0 select-none"
+            className="font-bitter font-bold text-sm sm:text-base tracking-tight leading-none select-none hidden min-[360px]:inline"
             style={{ color: activeTheme.text }}
           >
             Pluscript
@@ -919,12 +919,12 @@ export default function App() {
         </div>
 
         {/* Right: Actions (Search, Snippets, Settings, Save, Run/Preview) */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 justify-end overflow-x-auto no-scrollbar py-0.5">
           <button
             onClick={() =>
               setSearchState((prev) => ({ ...prev, isOpen: !prev.isOpen }))
             }
-            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all active:scale-95 shrink-0 ${
+            className={`flex h-8 w-8 min-w-8 items-center justify-center rounded-lg border transition-all active:scale-95 shrink-0 ${
               searchState.isOpen ? 'bg-white text-black' : ''
             }`}
             style={{
@@ -939,7 +939,7 @@ export default function App() {
 
           <button
             onClick={() => setIsSnippetsOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border transition-all active:scale-95 shrink-0"
+            className="flex h-8 w-8 min-w-8 items-center justify-center rounded-lg border transition-all active:scale-95 shrink-0"
             style={{
               backgroundColor: activeTheme.surface,
               borderColor: activeTheme.surfaceBorder,
@@ -952,7 +952,7 @@ export default function App() {
 
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border transition-all active:scale-95 shrink-0"
+            className="flex h-8 w-8 min-w-8 items-center justify-center rounded-lg border transition-all active:scale-95 shrink-0"
             style={{
               backgroundColor: activeTheme.surface,
               borderColor: activeTheme.surfaceBorder,
@@ -969,7 +969,7 @@ export default function App() {
               setIsGitHubOpen(true);
               setHasGitHubToken(Boolean(localStorage.getItem('pluscript_github_token')));
             }}
-            className="relative flex h-8 w-8 items-center justify-center rounded-lg border transition-all active:scale-95 shrink-0"
+            className="relative flex h-8 w-8 min-w-8 items-center justify-center rounded-lg border transition-all active:scale-95 shrink-0"
             style={{
               backgroundColor: activeTheme.surface,
               borderColor: hasGitHubToken ? 'rgba(56, 189, 248, 0.4)' : activeTheme.surfaceBorder,
@@ -987,7 +987,7 @@ export default function App() {
           {!isInstalled && (
             <button
               onClick={() => setIsInstallModalOpen(true)}
-              className="flex h-8 items-center gap-1.5 rounded-lg border px-2 sm:px-2.5 text-xs font-semibold shadow-sm transition-all active:scale-95 shrink-0 hover:opacity-90"
+              className="flex h-8 w-8 min-w-8 sm:w-auto items-center justify-center gap-1.5 rounded-lg border sm:px-2.5 text-xs font-semibold shadow-sm transition-all active:scale-95 shrink-0 hover:opacity-90"
               style={{
                 background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.4) 0%, rgba(26, 27, 34, 0.9) 100%)',
                 borderColor: 'rgba(168, 85, 247, 0.35)',
@@ -1004,18 +1004,18 @@ export default function App() {
           {activeFile.github && (
             <button
               onClick={() => setIsCommitModalOpen(true)}
-              className="flex h-8 items-center gap-1.5 rounded-lg px-2 sm:px-2.5 text-xs font-bold shadow-md transition-all active:scale-95 shrink-0 bg-[#238636] hover:bg-[#2ea043] text-white"
+              className="flex h-8 w-8 min-w-8 sm:w-auto items-center justify-center gap-1.5 rounded-lg sm:px-2.5 text-xs font-bold shadow-md transition-all active:scale-95 shrink-0 bg-[#238636] hover:bg-[#2ea043] text-white"
               title={`Commit and push changes to ${activeFile.github.owner}/${activeFile.github.repo}`}
             >
               <GitCommit className="h-3.5 w-3.5" />
-              <span>Commit</span>
+              <span className="hidden sm:inline">Commit</span>
             </button>
           )}
 
           {/* Save Button */}
           <button
             onClick={handleSaveFile}
-            className="flex h-8 items-center gap-1.5 rounded-lg border px-2 sm:px-2.5 text-xs font-semibold shadow-sm transition-all active:scale-95 shrink-0"
+            className="flex h-8 w-8 min-w-8 sm:w-auto items-center justify-center gap-1.5 rounded-lg border sm:px-2.5 text-xs font-semibold shadow-sm transition-all active:scale-95 shrink-0"
             style={{
               backgroundColor: activeTheme.surface,
               borderColor: activeTheme.surfaceBorder,
@@ -1034,7 +1034,7 @@ export default function App() {
           {activeFile.language === 'markdown' || activeFile.language === 'html' || activeFile.language === 'xml' ? (
             <button
               onClick={handleRunScript}
-              className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 sm:px-3 text-xs font-bold shadow-md transition-all active:scale-95 shrink-0"
+              className="flex h-8 items-center justify-center gap-1.5 rounded-lg px-2.5 sm:px-3 text-xs font-bold shadow-md transition-all active:scale-95 shrink-0"
               style={{
                 backgroundColor: activeTheme.accent,
                 color: activeTheme.accentText
@@ -1042,12 +1042,12 @@ export default function App() {
               title="Preview Rendered Output"
             >
               <Eye className="h-3.5 w-3.5" />
-              <span>Preview</span>
+              <span className="hidden min-[380px]:inline">Preview</span>
             </button>
           ) : (
             <button
               onClick={handleRunScript}
-              className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 sm:px-3 text-xs font-bold shadow-md transition-all active:scale-95 shrink-0"
+              className="flex h-8 items-center justify-center gap-1.5 rounded-lg px-2.5 sm:px-3 text-xs font-bold shadow-md transition-all active:scale-95 shrink-0"
               style={{
                 backgroundColor: activeTheme.accent,
                 color: activeTheme.accentText
@@ -1055,7 +1055,7 @@ export default function App() {
               title="Run script"
             >
               <Play className="h-3.5 w-3.5 fill-current" />
-              <span>Run</span>
+              <span className="hidden min-[380px]:inline">Run</span>
             </button>
           )}
         </div>
