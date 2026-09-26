@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Github,
@@ -395,17 +395,62 @@ export const GitHubModal: React.FC<Props> = ({
 
   if (!isOpen) return null;
 
+  // Check if an item is visible based on expanded folders
+  const isItemVisible = useCallback(
+    (itemPath: string): boolean => {
+      const parts = itemPath.split('/');
+      if (parts.length <= 1) return true; // Root level items are always visible
+
+      // Check all ancestor paths
+      let currentAncestor = '';
+      for (let i = 0; i < parts.length - 1; i++) {
+        currentAncestor = currentAncestor ? `${currentAncestor}/${parts[i]}` : parts[i];
+        if (!expandedFolders.has(currentAncestor)) {
+          return false;
+        }
+      }
+      return true;
+    },
+    [expandedFolders]
+  );
+
   // Filter repositories
   const filteredRepos = repos.filter((r) =>
     r.name.toLowerCase().includes(repoSearch.toLowerCase()) ||
     r.description?.toLowerCase().includes(repoSearch.toLowerCase())
   );
 
-  // Filter file tree
-  const filteredTree = treeItems.filter((item) => {
-    if (!fileSearchQuery.trim()) return true;
-    return item.path.toLowerCase().includes(fileSearchQuery.toLowerCase());
-  });
+  // Hierarchically sorted tree (folders grouped together and preceding files)
+  const sortedTree = useMemo(() => {
+    return [...treeItems].sort((a, b) => {
+      const aParts = a.path.split('/');
+      const bParts = b.path.split('/');
+      const minLen = Math.min(aParts.length, bParts.length);
+
+      for (let i = 0; i < minLen; i++) {
+        if (aParts[i] !== bParts[i]) {
+          const aIsDir = i < aParts.length - 1 || a.type === 'tree';
+          const bIsDir = i < bParts.length - 1 || b.type === 'tree';
+          if (aIsDir !== bIsDir) {
+            return aIsDir ? -1 : 1;
+          }
+          return aParts[i].localeCompare(bParts[i]);
+        }
+      }
+      return aParts.length - bParts.length;
+    });
+  }, [treeItems]);
+
+  // Filter file tree: when searching show all matching items flat, otherwise respect folder collapse/expand
+  const filteredTree = useMemo(() => {
+    const isSearching = !!fileSearchQuery.trim();
+    return sortedTree.filter((item) => {
+      if (isSearching) {
+        return item.path.toLowerCase().includes(fileSearchQuery.toLowerCase());
+      }
+      return isItemVisible(item.path);
+    });
+  }, [sortedTree, fileSearchQuery, isItemVisible]);
 
   return (
     <AnimatePresence>

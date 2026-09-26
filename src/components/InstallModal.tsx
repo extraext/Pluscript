@@ -181,7 +181,7 @@ export const InstallModal: React.FC<Props> = ({
                   3
                 </div>
                 <div>
-                  Tap <strong className="text-white">Add</strong> in the top corner. Enjoy full offline coding!
+                  Tap <strong className="text-white">Add</strong> in the top corner.
                 </div>
               </div>
             </div>
