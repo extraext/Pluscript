@@ -228,9 +228,12 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
           </style>
         </head>
         <body>
-          <div class="card">
+          <div class="card" id="statusCard">
             <div class="success">✓ Connected!</div>
-            <p>GitHub connected successfully. Returning to Pluscript...</p>
+            <p id="statusMsg" style="margin: 8px 0 0 0; font-size: 14px; line-height: 1.4;">Connecting to Pluscript...</p>
+            <button id="closeBtn" onclick="window.close()" style="display:none; margin-top: 16px; background: #238636; color: white; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer;">
+              Close Tab
+            </button>
           </div>
           <script>
             const token = ${JSON.stringify(accessToken)};
@@ -257,25 +260,40 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
 
             try {
               if (window.opener) {
+                // Sent to main editor window
                 window.opener.postMessage({
                   type: 'OAUTH_AUTH_SUCCESS',
                   provider: 'github',
                   token: token
                 }, '*');
+
+                // Try to close popup window automatically
+                try { window.close(); } catch(e) {}
                 setTimeout(() => {
                   try { window.close(); } catch(e) {}
-                  window.location.replace(targetUrl);
-                }, 1000);
+                }, 250);
+
+                // If popup is still open after 500ms (browser blocked script closing the window):
+                // Do NOT redirect this popup to targetUrl (which opens a duplicate frozen app)!
+                // Just display a friendly 'Close Tab' button so the user can close this tab and return to Pluscript.
+                setTimeout(() => {
+                  const msg = document.getElementById('statusMsg');
+                  const btn = document.getElementById('closeBtn');
+                  if (msg) msg.textContent = 'Authenticated! You can now close this tab and return to Pluscript.';
+                  if (btn) btn.style.display = 'inline-block';
+                }, 500);
               } else {
+                // No opener: this was a direct navigation in the same tab (e.g. mobile redirect)
                 setTimeout(() => {
                   window.location.replace(targetUrl);
-                }, 600);
+                }, 400);
               }
             } catch (err) {
               console.error('Error posting message to opener:', err);
+              // Fallback redirect if opener post failed
               setTimeout(() => {
                 window.location.replace(targetUrl);
-              }, 600);
+              }, 500);
             }
           </script>
         </body>

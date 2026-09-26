@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Github,
@@ -75,6 +75,7 @@ export const GitHubModal: React.FC<Props> = ({
 
   // Filter repositories
   const [repoSearch, setRepoSearch] = useState('');
+  const isFetchingUserRef = useRef(false);
 
   // Load user info and repos if token exists
   const loadUserData = useCallback(async () => {
@@ -85,6 +86,8 @@ export const GitHubModal: React.FC<Props> = ({
       return;
     }
 
+    if (isFetchingUserRef.current) return;
+    isFetchingUserRef.current = true;
     setIsLoadingUser(true);
     setError(null);
     try {
@@ -110,6 +113,7 @@ export const GitHubModal: React.FC<Props> = ({
         setToken(null);
       }
     } finally {
+      isFetchingUserRef.current = false;
       setIsLoadingUser(false);
     }
   }, []);
@@ -157,6 +161,7 @@ export const GitHubModal: React.FC<Props> = ({
       setStoredGitHubToken(receivedToken);
       setToken(receivedToken);
       setError(null);
+      loadUserData();
     };
 
     const handleMessage = (event: MessageEvent) => {

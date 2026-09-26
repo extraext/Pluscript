@@ -67,19 +67,31 @@ async function githubFetch(endpoint: string, options: RequestInit = {}): Promise
 
   const cleanEndpoint = endpoint.replace(/^\//, '');
   let res: Response;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  const fetchSignal = options.signal || controller.signal;
 
   try {
     const url = endpoint.startsWith('http') ? endpoint : `/api/github/${cleanEndpoint}`;
-    res = await fetch(url, { ...options, headers });
+    res = await fetch(url, { ...options, headers, signal: fetchSignal });
     if (!res.ok && res.status >= 500 && !endpoint.startsWith('http')) {
-      res = await fetch(`https://api.github.com/${cleanEndpoint}`, { ...options, headers });
+      res = await fetch(`https://api.github.com/${cleanEndpoint}`, { ...options, headers, signal: fetchSignal });
     }
-  } catch {
+  } catch (e: any) {
+    if (e.name === 'AbortError') {
+      throw new Error('GitHub request timed out. Please check your connection.');
+    }
     if (!endpoint.startsWith('http')) {
-      res = await fetch(`https://api.github.com/${cleanEndpoint}`, { ...options, headers });
+      try {
+        res = await fetch(`https://api.github.com/${cleanEndpoint}`, { ...options, headers, signal: fetchSignal });
+      } catch (directErr: any) {
+        throw new Error(directErr?.message || 'Network error reaching GitHub');
+      }
     } else {
       throw new Error('Network error reaching GitHub');
     }
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (!res.ok) {
