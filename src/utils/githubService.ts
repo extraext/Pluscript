@@ -9,7 +9,20 @@ import { EXTENSION_TO_LANG } from './defaultFiles';
 const GITHUB_TOKEN_KEY = 'pluscript_github_token';
 
 export function getStoredGitHubToken(): string | null {
-  return localStorage.getItem(GITHUB_TOKEN_KEY);
+  if (typeof window !== 'undefined') {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryToken = urlParams.get('github_token');
+      if (queryToken) {
+        localStorage.setItem(GITHUB_TOKEN_KEY, queryToken);
+        return queryToken;
+      }
+    } catch {}
+    try {
+      return localStorage.getItem(GITHUB_TOKEN_KEY);
+    } catch {}
+  }
+  return null;
 }
 
 export function setStoredGitHubToken(token: string): void {

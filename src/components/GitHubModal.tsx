@@ -132,10 +132,18 @@ export const GitHubModal: React.FC<Props> = ({
   }, []);
 
   useEffect(() => {
-    if (isOpen && token) {
-      loadUserData();
+    if (isOpen) {
+      const activeToken = getStoredGitHubToken();
+      if (activeToken) {
+        if (activeToken !== token) {
+          setToken(activeToken);
+        }
+        if (!user && !isLoadingUser) {
+          loadUserData();
+        }
+      }
     }
-  }, [isOpen, token, loadUserData]);
+  }, [isOpen, token, user, isLoadingUser, loadUserData]);
 
   // Handle OAuth listeners (postMessage, BroadcastChannel, storage, focus, visibility, and polling)
   useEffect(() => {

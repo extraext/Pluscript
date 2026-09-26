@@ -48,7 +48,8 @@ app.get('/api/auth/github/url', (req, res) => {
   const params = new URLSearchParams({
     client_id: clientId,
     scope: 'repo user read:user',
-    allow_signup: 'true'
+    allow_signup: 'true',
+    state: baseUrl
   });
 
   if (!omitRedirectUri) {
@@ -132,6 +133,7 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
     }
 
     const accessToken = tokenData.access_token;
+    const returnOrigin = (req.query.state as string) || '';
 
     // Send token back to parent window using postMessage and close popup
     res.send(`
@@ -139,6 +141,7 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
       <html>
         <head>
           <title>Pluscript - GitHub Connected</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <style>
             body {
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -174,6 +177,11 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
           </div>
           <script>
             const token = ${JSON.stringify(accessToken)};
+            const returnOrigin = ${JSON.stringify(returnOrigin)};
+            const targetUrl = returnOrigin
+              ? (returnOrigin.replace(/\/$/, '') + '/?github_token=' + encodeURIComponent(token))
+              : ('/?github_token=' + encodeURIComponent(token));
+
             try {
               localStorage.setItem('pluscript_github_token', token);
             } catch (err) {
@@ -197,17 +205,20 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
                   provider: 'github',
                   token: token
                 }, '*');
-                setTimeout(() => window.close(), 1000);
+                setTimeout(() => {
+                  try { window.close(); } catch(e) {}
+                  window.location.replace(targetUrl);
+                }, 1000);
               } else {
                 setTimeout(() => {
-                  window.location.href = '/?github_token=' + encodeURIComponent(token);
-                }, 800);
+                  window.location.replace(targetUrl);
+                }, 600);
               }
             } catch (err) {
               console.error('Error posting message to opener:', err);
               setTimeout(() => {
-                window.location.href = '/?github_token=' + encodeURIComponent(token);
-              }, 800);
+                window.location.replace(targetUrl);
+              }, 600);
             }
           </script>
         </body>

@@ -250,8 +250,12 @@ export default function App() {
         localStorage.setItem('pluscript_github_token', queryToken);
         setHasGitHubToken(true);
         setIsGitHubOpen(true);
-        const cleanUrl = window.location.pathname + window.location.hash;
-        window.history.replaceState({}, document.title, cleanUrl);
+        setTimeout(() => {
+          try {
+            const cleanUrl = window.location.pathname + window.location.hash;
+            window.history.replaceState({}, document.title, cleanUrl);
+          } catch {}
+        }, 1500);
       }
     } catch {}
 
