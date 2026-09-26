@@ -233,6 +233,27 @@ export default function App() {
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [isGitHubOpen, setIsGitHubOpen] = useState(false);
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
+  const [hasGitHubToken, setHasGitHubToken] = useState<boolean>(() => {
+    try {
+      return Boolean(localStorage.getItem('pluscript_github_token'));
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const checkToken = () => {
+      try {
+        setHasGitHubToken(Boolean(localStorage.getItem('pluscript_github_token')));
+      } catch {}
+    };
+    window.addEventListener('storage', checkToken);
+    window.addEventListener('focus', checkToken);
+    return () => {
+      window.removeEventListener('storage', checkToken);
+      window.removeEventListener('focus', checkToken);
+    };
+  }, []);
 
   // PWA & Offline integration
   const { isInstallable, isInstalled, isIOS, triggerInstall } = usePWA();
@@ -903,6 +924,26 @@ export default function App() {
             title="Preferences"
           >
             <Settings className="h-3.5 w-3.5" />
+          </button>
+
+          {/* GitHub Integration Button */}
+          <button
+            onClick={() => {
+              setIsGitHubOpen(true);
+              setHasGitHubToken(Boolean(localStorage.getItem('pluscript_github_token')));
+            }}
+            className="relative flex h-8 w-8 items-center justify-center rounded-lg border transition-all active:scale-95 shrink-0"
+            style={{
+              backgroundColor: activeTheme.surface,
+              borderColor: hasGitHubToken ? 'rgba(56, 189, 248, 0.4)' : activeTheme.surfaceBorder,
+              color: hasGitHubToken ? '#38bdf8' : activeTheme.text
+            }}
+            title={hasGitHubToken ? "GitHub Connected (Repositories)" : "Connect to GitHub"}
+          >
+            <Github className="h-3.5 w-3.5" />
+            {hasGitHubToken && (
+              <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400 ring-1 ring-black" />
+            )}
           </button>
 
           {/* Install Pluscript Button */}

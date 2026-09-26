@@ -55,6 +55,16 @@ app.get('/api/auth/github/url', (req, res) => {
   res.json({ url: authUrl, redirectUri });
 });
 
+// Check if server has GitHub OAuth configured
+app.get('/api/auth/github/config', (req, res) => {
+  const clientId = process.env.GITHUB_CLIENT_ID || process.env.CLIENT_ID;
+  const hasSecret = !!(process.env.GITHUB_CLIENT_SECRET || process.env.CLIENT_SECRET);
+  res.json({
+    configured: Boolean(clientId && hasSecret),
+    clientId: clientId ? `${clientId.slice(0, 4)}...` : null
+  });
+});
+
 // 2. GitHub OAuth Callback (postMessage to popup opener)
 const callbackHandler: express.RequestHandler = async (req, res) => {
   const code = req.query.code as string;
@@ -86,6 +96,9 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
   }
 
   try {
+    const baseUrl = getBaseUrl(req);
+    const redirectUri = `${baseUrl.replace(/\/$/, '')}/auth/callback`;
+
     // Exchange code with GitHub API for access token
     const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
@@ -96,7 +109,8 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
       body: JSON.stringify({
         client_id: clientId,
         client_secret: clientSecret,
-        code
+        code,
+        redirect_uri: redirectUri
       })
     });
 
@@ -167,7 +181,9 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
               if (typeof BroadcastChannel !== 'undefined') {
                 const bc = new BroadcastChannel('pluscript_oauth');
                 bc.postMessage({ type: 'OAUTH_AUTH_SUCCESS', provider: 'github', token: token });
-                bc.close();
+                setTimeout(() => {
+                  try { bc.close(); } catch(e) {}
+                }, 2000);
               }
             } catch (err) {}
 

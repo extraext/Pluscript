@@ -25,7 +25,9 @@ import {
   AlertCircle,
   ArrowLeft,
   Sparkles,
-  Download
+  Download,
+  Copy,
+  Info
 } from 'lucide-react';
 import { EditorTheme, GitHubUser, GitHubRepo, GitHubTreeItem, ScriptFile } from '../types/editor';
 import {
@@ -62,6 +64,8 @@ export const GitHubModal: React.FC<Props> = ({
   const [isLoadingUser, setIsLoadingUser] = useState(false);
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedCallback, setCopiedCallback] = useState(false);
+  const [showOAuthHelp, setShowOAuthHelp] = useState(false);
 
   // Active Selected Repo & Tree Explorer State
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
@@ -79,23 +83,51 @@ export const GitHubModal: React.FC<Props> = ({
   // Filter repositories
   const [repoSearch, setRepoSearch] = useState('');
 
+  const currentCallbackUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '';
+
+  const handleCopyCallback = () => {
+    if (currentCallbackUrl) {
+      navigator.clipboard.writeText(currentCallbackUrl);
+      setCopiedCallback(true);
+      setTimeout(() => setCopiedCallback(false), 2000);
+    }
+  };
+
   // Load user info and repos if token exists
   const loadUserData = useCallback(async () => {
+    const currentToken = getStoredGitHubToken();
+    if (!currentToken) {
+      setUser(null);
+      setRepos([]);
+      return;
+    }
+
     setIsLoadingUser(true);
     setError(null);
     try {
       const userData = await fetchGitHubUser();
       setUser(userData);
 
-      setIsLoadingRepos(true);
-      const userRepos = await fetchUserRepos();
-      setRepos(userRepos);
+      try {
+        setIsLoadingRepos(true);
+        const userRepos = await fetchUserRepos();
+        setRepos(userRepos);
+      } catch (repoErr: any) {
+        console.warn('Failed to load user repos:', repoErr);
+        // Do not clear user profile if listing repos failed (e.g., partial scope)
+      } finally {
+        setIsLoadingRepos(false);
+      }
     } catch (err: any) {
-      setError(err?.message || 'Failed to authenticate with GitHub. Check your token or network connection.');
+      const msg = err?.message || 'Failed to authenticate with GitHub. Check your token or network connection.';
+      setError(msg);
       setUser(null);
+      if (msg.includes('Bad credentials') || msg.includes('401')) {
+        clearStoredGitHubToken();
+        setToken(null);
+      }
     } finally {
       setIsLoadingUser(false);
-      setIsLoadingRepos(false);
     }
   }, []);
 
@@ -153,7 +185,9 @@ export const GitHubModal: React.FC<Props> = ({
       window.removeEventListener('message', handleMessage);
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('focus', handleFocus);
-      if (bc) bc.close();
+      if (bc) {
+        try { bc.close(); } catch(e) {}
+      }
     };
   }, [token]);
 
@@ -176,10 +210,13 @@ export const GitHubModal: React.FC<Props> = ({
       );
 
       if (!authWindow) {
-        setError('Popup was blocked by your browser. Please allow popups or use a Personal Access Token.');
+        setError('Popup was blocked by your browser. Please allow popups or use a Personal Access Token below.');
       }
     } catch (err: any) {
-      setError(err?.message || 'OAuth initiation failed. You can connect instantly using a Personal Access Token below.');
+      setError(
+        err?.message ||
+        'OAuth initiation failed. If GITHUB_CLIENT_ID is not configured, you can connect instantly using a Personal Access Token below.'
+      );
     }
   };
 
@@ -401,18 +438,30 @@ export const GitHubModal: React.FC<Props> = ({
               </div>
             )}
 
-            {/* If NOT logged in / No User */}
-            {!user ? (
-              <div className="flex-1 flex flex-col justify-center items-center max-w-md mx-auto py-6 space-y-6 text-center">
-                <div className="space-y-2">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#24292f] border border-white/10 text-white shadow-xl">
-                    <Github className="h-7 w-7" />
+            {/* Loading state while verifying token or loading profile */}
+            {isLoadingUser && !user ? (
+              <div className="flex-1 flex flex-col justify-center items-center py-12 gap-3 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold" style={{ color: theme.text }}>
+                    Authenticating with GitHub...
+                  </p>
+                  <p className="text-xs" style={{ color: theme.textMuted }}>
+                    Fetching your user profile and verifying credentials
+                  </p>
+                </div>
+              </div>
+            ) : !user ? (
+              <div className="flex-1 flex flex-col justify-center items-center max-w-md mx-auto py-4 space-y-5 text-center">
+                <div className="space-y-1.5">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#24292f] border border-white/10 text-white shadow-xl">
+                    <Github className="h-6 w-6" />
                   </div>
                   <h4 className="text-base font-bold" style={{ color: theme.text }}>
                     Connect GitHub Account
                   </h4>
                   <p className="text-xs max-w-xs leading-relaxed" style={{ color: theme.textMuted }}>
-                    Open and edit source code files from your GitHub repositories and commit updates directly from Pluscript.
+                    Open, edit, and commit code directly to and from your GitHub repositories in Pluscript.
                   </p>
                 </div>
 
@@ -426,9 +475,48 @@ export const GitHubModal: React.FC<Props> = ({
                     <span>Connect with GitHub OAuth</span>
                   </button>
 
-                  <div className="flex items-center gap-2">
+                  {/* OAuth App Callback Info Helper */}
+                  <div
+                    className="rounded-xl border p-2.5 text-left text-[11px] space-y-1.5"
+                    style={{
+                      backgroundColor: theme.surface,
+                      borderColor: theme.surfaceBorder
+                    }}
+                  >
+                    <div className="flex items-center justify-between font-semibold" style={{ color: theme.text }}>
+                      <span className="flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5 text-sky-400" />
+                        <span>OAuth App Callback URL</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCopyCallback}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 hover:bg-sky-500/20 active:scale-95 transition-all text-[10px]"
+                      >
+                        {copiedCallback ? (
+                          <>
+                            <Check className="h-2.5 w-2.5 text-emerald-400" />
+                            <span className="text-emerald-400 font-semibold">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-2.5 w-2.5" />
+                            <span>Copy URL</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-[10px] leading-tight" style={{ color: theme.textMuted }}>
+                      If using a GitHub OAuth App, set the Authorization Callback URL in GitHub Settings to:
+                    </p>
+                    <div className="font-mono text-[10px] p-1.5 rounded bg-black/30 border border-white/5 break-all text-sky-300 select-all">
+                      {currentCallbackUrl || `${window.location.origin}/auth/callback`}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
                     <div className="flex-1 border-t" style={{ borderColor: theme.surfaceBorder }} />
-                    <span className="text-[10px] font-mono uppercase text-neutral-500">or use Access Token</span>
+                    <span className="text-[10px] font-mono uppercase text-neutral-500">or use Personal Access Token</span>
                     <div className="flex-1 border-t" style={{ borderColor: theme.surfaceBorder }} />
                   </div>
 
@@ -471,7 +559,7 @@ export const GitHubModal: React.FC<Props> = ({
                       </button>
                     </div>
                     <p className="text-[10px] text-neutral-500">
-                      Requires <code>repo</code> scope for private repos and commit permissions.
+                      Works immediately with zero OAuth setup. Requires <code>repo</code> scope to view private repositories and commit.
                     </p>
                   </form>
                 </div>
