@@ -41,15 +41,19 @@ app.get('/api/auth/github/url', (req, res) => {
   }
 
   const clientOrigin = req.query.origin as string;
+  const omitRedirectUri = req.query.omit_redirect_uri === 'true';
   const baseUrl = clientOrigin || getBaseUrl(req);
   const redirectUri = `${baseUrl.replace(/\/$/, '')}/auth/callback`;
 
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: redirectUri,
     scope: 'repo user read:user',
     allow_signup: 'true'
   });
+
+  if (!omitRedirectUri) {
+    params.set('redirect_uri', redirectUri);
+  }
 
   const authUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
   res.json({ url: authUrl, redirectUri });
@@ -109,8 +113,7 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
       body: JSON.stringify({
         client_id: clientId,
         client_secret: clientSecret,
-        code,
-        redirect_uri: redirectUri
+        code
       })
     });
 

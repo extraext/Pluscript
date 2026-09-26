@@ -192,11 +192,14 @@ export const GitHubModal: React.FC<Props> = ({
   }, [token]);
 
   // Initiate OAuth connect
-  const handleConnectOAuth = async () => {
+  const handleConnectOAuth = async (omitRedirectUri = false) => {
     setError(null);
     try {
       const originParam = encodeURIComponent(window.location.origin);
-      const res = await fetch(`/api/auth/github/url?origin=${originParam}`);
+      const urlEndpoint = omitRedirectUri
+        ? '/api/auth/github/url?omit_redirect_uri=true'
+        : `/api/auth/github/url?origin=${originParam}`;
+      const res = await fetch(urlEndpoint);
       const data = await res.json();
 
       if (!res.ok || !data.url) {
@@ -468,7 +471,7 @@ export const GitHubModal: React.FC<Props> = ({
                 {/* Connect Buttons */}
                 <div className="w-full space-y-3">
                   <button
-                    onClick={handleConnectOAuth}
+                    onClick={() => handleConnectOAuth(false)}
                     className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-semibold shadow-md active:scale-95 transition-all bg-[#24292f] hover:bg-[#2f363d] text-white border border-white/10"
                   >
                     <Github className="h-4 w-4" />
@@ -507,10 +510,21 @@ export const GitHubModal: React.FC<Props> = ({
                       </button>
                     </div>
                     <p className="text-[10px] leading-tight" style={{ color: theme.textMuted }}>
-                      If using a GitHub OAuth App, set the Authorization Callback URL in GitHub Settings to:
+                      In GitHub Developer Settings &gt; OAuth Apps, set the <strong>Authorization callback URL</strong> to:
                     </p>
                     <div className="font-mono text-[10px] p-1.5 rounded bg-black/30 border border-white/5 break-all text-sky-300 select-all">
                       {currentCallbackUrl || `${window.location.origin}/auth/callback`}
+                    </div>
+                    <div className="pt-1 flex items-center justify-between text-[10px]">
+                      <span style={{ color: theme.textMuted }}>Seeing redirect_uri warning?</span>
+                      <button
+                        type="button"
+                        onClick={() => handleConnectOAuth(true)}
+                        className="text-sky-400 hover:underline font-medium"
+                        title="Omits redirect_uri parameter so GitHub redirects to whatever URL is saved in your OAuth app"
+                      >
+                        Connect using registered callback &rarr;
+                      </button>
                     </div>
                   </div>
 
