@@ -242,22 +242,40 @@ export default function App() {
   });
 
   useEffect(() => {
-    // Check if OAuth redirected back with token query parameter (standard mobile OAuth fallback)
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const queryToken = params.get('github_token');
-      if (queryToken) {
-        localStorage.setItem('pluscript_github_token', queryToken);
-        setHasGitHubToken(true);
-        setIsGitHubOpen(true);
-        setTimeout(() => {
-          try {
-            const cleanUrl = window.location.pathname + window.location.hash;
-            window.history.replaceState({}, document.title, cleanUrl);
-          } catch {}
-        }, 1500);
+    // Check if OAuth redirected back with token or code query parameter
+    const handleAuthRedirect = async () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const queryToken = params.get('github_token');
+        const code = params.get('code');
+
+        if (queryToken) {
+          localStorage.setItem('pluscript_github_token', queryToken);
+          setHasGitHubToken(true);
+          setIsGitHubOpen(true);
+          window.history.replaceState({}, document.title, '/');
+          return;
+        }
+
+        if (code) {
+          setIsGitHubOpen(true);
+          const res = await fetch(`/api/auth/github/exchange?code=${encodeURIComponent(code)}`);
+          const data = await res.json();
+          if (data.token || data.access_token) {
+            const token = data.token || data.access_token;
+            localStorage.setItem('pluscript_github_token', token);
+            setHasGitHubToken(true);
+            window.history.replaceState({}, document.title, '/');
+          } else {
+            console.warn('Code exchange returned no token:', data);
+          }
+        }
+      } catch (err) {
+        console.warn('OAuth redirect handling error:', err);
       }
-    } catch {}
+    };
+
+    handleAuthRedirect();
 
     const checkToken = () => {
       try {

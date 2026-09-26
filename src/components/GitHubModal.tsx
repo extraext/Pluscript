@@ -132,7 +132,29 @@ export const GitHubModal: React.FC<Props> = ({
   }, []);
 
   useEffect(() => {
+    // Check if OAuth code is in URL on arrival
+    const checkCodeInUrl = async () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        if (code) {
+          setIsLoadingUser(true);
+          const res = await fetch(`/api/auth/github/exchange?code=${encodeURIComponent(code)}`);
+          const data = await res.json();
+          if (data.token || data.access_token) {
+            const receivedToken = data.token || data.access_token;
+            setStoredGitHubToken(receivedToken);
+            setToken(receivedToken);
+            window.history.replaceState({}, document.title, '/');
+          }
+        }
+      } catch (e) {
+        console.warn('Modal code check error:', e);
+      }
+    };
+
     if (isOpen) {
+      checkCodeInUrl();
       const activeToken = getStoredGitHubToken();
       if (activeToken) {
         if (activeToken !== token) {

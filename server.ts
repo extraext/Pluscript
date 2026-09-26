@@ -70,6 +70,45 @@ app.get('/api/auth/github/config', (req, res) => {
   });
 });
 
+// Endpoint to exchange OAuth code for access token via API
+app.all(['/api/auth/github/exchange', '/api/auth/github/token'], async (req, res) => {
+  const code = (req.query.code || req.body?.code) as string;
+  const clientId = process.env.GITHUB_CLIENT_ID || process.env.CLIENT_ID;
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET || process.env.CLIENT_SECRET;
+
+  if (!code) {
+    return res.status(400).json({ error: 'Authorization code is required' });
+  }
+
+  if (!clientId || !clientSecret) {
+    return res.status(500).json({ error: 'GitHub OAuth is not configured on the server' });
+  }
+
+  try {
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code
+      })
+    });
+
+    const tokenData = await tokenResponse.json();
+    if (tokenData.error) {
+      return res.status(400).json({ error: tokenData.error_description || tokenData.error });
+    }
+
+    res.json({ token: tokenData.access_token, ...tokenData });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Token exchange failed' });
+  }
+});
+
 // 2. GitHub OAuth Callback (postMessage to popup opener)
 const callbackHandler: express.RequestHandler = async (req, res) => {
   const code = req.query.code as string;
