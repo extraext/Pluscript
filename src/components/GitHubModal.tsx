@@ -393,8 +393,6 @@ export const GitHubModal: React.FC<Props> = ({
     });
   };
 
-  if (!isOpen) return null;
-
   // Check if an item is visible based on expanded folders
   const isItemVisible = useCallback(
     (itemPath: string): boolean => {
@@ -454,7 +452,8 @@ export const GitHubModal: React.FC<Props> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 select-none">
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 select-none">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -940,7 +939,8 @@ export const GitHubModal: React.FC<Props> = ({
             )}
           </div>
         </motion.div>
-      </div>
+        </div>
+      )}
     </AnimatePresence>
   );
 };
