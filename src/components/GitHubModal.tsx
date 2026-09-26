@@ -137,7 +137,7 @@ export const GitHubModal: React.FC<Props> = ({
     }
   }, [isOpen, token, loadUserData]);
 
-  // Handle OAuth listeners (postMessage, BroadcastChannel, storage, focus)
+  // Handle OAuth listeners (postMessage, BroadcastChannel, storage, focus, visibility, and polling)
   useEffect(() => {
     const handleAuthToken = (receivedToken: string) => {
       if (!receivedToken) return;
@@ -170,26 +170,45 @@ export const GitHubModal: React.FC<Props> = ({
       }
     };
 
-    const handleFocus = () => {
+    const syncToken = () => {
       const currentToken = getStoredGitHubToken();
-      if (currentToken && currentToken !== token) {
-        setToken(currentToken);
+      if (currentToken) {
+        if (currentToken !== token) {
+          handleAuthToken(currentToken);
+        } else if (!user && !isLoadingUser) {
+          loadUserData();
+        }
+      }
+    };
+
+    // Immediate check
+    syncToken();
+
+    // Check periodically every 600ms while modal is open to catch mobile auth completion
+    const pollInterval = setInterval(syncToken, 600);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        syncToken();
       }
     };
 
     window.addEventListener('message', handleMessage);
     window.addEventListener('storage', handleStorage);
-    window.addEventListener('focus', handleFocus);
+    window.addEventListener('focus', syncToken);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      clearInterval(pollInterval);
       window.removeEventListener('message', handleMessage);
       window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('focus', syncToken);
+      document.removeEventListener('visibilitychange', handleVisibility);
       if (bc) {
         try { bc.close(); } catch(e) {}
       }
     };
-  }, [token]);
+  }, [token, user, isLoadingUser, loadUserData]);
 
   // Initiate OAuth connect
   const handleConnectOAuth = async (omitRedirectUri = false) => {

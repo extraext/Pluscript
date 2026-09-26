@@ -200,14 +200,14 @@ const callbackHandler: express.RequestHandler = async (req, res) => {
                 setTimeout(() => window.close(), 1000);
               } else {
                 setTimeout(() => {
-                  window.location.href = '/';
-                }, 1000);
+                  window.location.href = '/?github_token=' + encodeURIComponent(token);
+                }, 800);
               }
             } catch (err) {
               console.error('Error posting message to opener:', err);
               setTimeout(() => {
-                window.location.href = '/';
-              }, 1000);
+                window.location.href = '/?github_token=' + encodeURIComponent(token);
+              }, 800);
             }
           </script>
         </body>

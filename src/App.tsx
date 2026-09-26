@@ -242,6 +242,19 @@ export default function App() {
   });
 
   useEffect(() => {
+    // Check if OAuth redirected back with token query parameter (standard mobile OAuth fallback)
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const queryToken = params.get('github_token');
+      if (queryToken) {
+        localStorage.setItem('pluscript_github_token', queryToken);
+        setHasGitHubToken(true);
+        setIsGitHubOpen(true);
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    } catch {}
+
     const checkToken = () => {
       try {
         setHasGitHubToken(Boolean(localStorage.getItem('pluscript_github_token')));
@@ -249,9 +262,11 @@ export default function App() {
     };
     window.addEventListener('storage', checkToken);
     window.addEventListener('focus', checkToken);
+    document.addEventListener('visibilitychange', checkToken);
     return () => {
       window.removeEventListener('storage', checkToken);
       window.removeEventListener('focus', checkToken);
+      document.removeEventListener('visibilitychange', checkToken);
     };
   }, []);
 
