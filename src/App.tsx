@@ -31,6 +31,7 @@ import {
 import { THEMES } from './utils/themes';
 import { DEFAULT_FILES, LANGUAGE_EXTENSIONS, EXTENSION_TO_LANG } from './utils/defaultFiles';
 import { executeScript } from './utils/scriptRunner';
+import { clearLineHighlightCache } from './utils/syntaxHighlighter';
 import { AccessoryBar } from './components/AccessoryBar';
 import { EditorArea } from './components/EditorArea';
 import { SearchReplaceBar } from './components/SearchReplaceBar';
@@ -41,6 +42,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { InstallModal } from './components/InstallModal';
 import { GitHubModal } from './components/GitHubModal';
 import { CommitModal } from './components/CommitModal';
+import { CustomLanguageModal } from './components/CustomLanguageModal';
 import { usePWA } from './hooks/usePWA';
 
 const STORAGE_FILES_KEY = 'pluscript_files';
@@ -233,6 +235,7 @@ export default function App() {
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [isGitHubOpen, setIsGitHubOpen] = useState(false);
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
+  const [isCustomXmlOpen, setIsCustomXmlOpen] = useState(false);
   const [hasGitHubToken, setHasGitHubToken] = useState<boolean>(() => {
     try {
       return Boolean(localStorage.getItem('pluscript_github_token'));
@@ -607,6 +610,8 @@ export default function App() {
       ? `# ${name}\nfrom PIL import Image, ImageDraw\n\n# Create a canvas\nimg = Image.new('RGB', (320, 200), color='#0f172a')\ndraw = ImageDraw.Draw(img)\n\n# Draw graphics\ndraw.rounded_rectangle([15, 15, 305, 185], radius=16, outline='#38bdf8', width=2)\ndraw.ellipse([45, 55, 115, 125], fill='#0284c7', outline='#7dd3fc', width=2)\ndraw.text((135, 75), "Pillow in Pluscript", fill='#ffffff')\ndraw.text((135, 98), "Image generated!", fill='#94a3b8')\n\n# Save to output file\nimg.save("output.png")\nprint("✓ Generated output.png with Pillow!")\n`
       : language === 'bash'
       ? `#!/usr/bin/env bash\n\necho "Running ${name}"\n`
+      : language === 'kos'
+      ? `// ${name} - kOS Kerbal Operating System script\nclearscreen.\nprint "Initializing ${name}...".\n\nlock throttle to 1.0.\nlock steering to heading(90, 90).\nstage.\n\nwait until ship:altitude > 10000.\nprint "Gravity turn initiated!".\n`
       : `/**\n * ${name}\n */\n\nconsole.log("Loaded ${name}");\n`;
 
     const newFile: ScriptFile = {
@@ -676,13 +681,14 @@ export default function App() {
       const content = event.target?.result as string;
       const name = file.name;
       const ext = name.split('.').pop()?.toLowerCase();
-      let lang: SupportedLanguage = 'javascript';
+      let lang: SupportedLanguage = ext && EXTENSION_TO_LANG[ext] ? EXTENSION_TO_LANG[ext] : 'plaintext';
       if (ext === 'py') lang = 'python';
       else if (ext === 'sh' || ext === 'bash') lang = 'bash';
       else if (ext === 'html' || ext === 'htm') lang = 'html';
       else if (ext === 'sql') lang = 'sql';
       else if (ext === 'json') lang = 'json';
       else if (ext === 'md' || ext === 'markdown') lang = 'markdown';
+      else if (ext === 'ks' || ext === 'kos') lang = 'kos';
       else if (ext === 'lua') lang = 'lua';
 
       const newId = `file-${Date.now()}`;
@@ -1271,6 +1277,7 @@ export default function App() {
         onExportFile={handleExportFile}
         onImportFile={handleImportFile}
         onOpenGitHub={() => setIsGitHubOpen(true)}
+        onOpenCustomXml={() => setIsCustomXmlOpen(true)}
         theme={activeTheme}
       />
 
@@ -1289,6 +1296,28 @@ export default function App() {
         file={activeFile}
         theme={activeTheme}
         onSuccess={handleCommitSuccess}
+      />
+
+      {/* Custom XML Language Definition Modal */}
+      <CustomLanguageModal
+        isOpen={isCustomXmlOpen}
+        onClose={() => setIsCustomXmlOpen(false)}
+        theme={activeTheme}
+        onLanguageImported={(lang) => {
+          clearLineHighlightCache();
+          // If active file matches extension, refresh language
+          const ext = activeFile.name.split('.').pop()?.toLowerCase();
+          if (ext && lang.extensions.includes(ext)) {
+            handleChangeLanguage(lang.id as SupportedLanguage);
+          } else {
+            // Trigger state change so editor re-renders with new custom keywords
+            setFiles((prev) => [...prev]);
+          }
+        }}
+        onLanguageRemoved={() => {
+          clearLineHighlightCache();
+          setFiles((prev) => [...prev]);
+        }}
       />
 
       {/* Snippets Modal */}
@@ -1316,6 +1345,7 @@ export default function App() {
         onToggleSmartIndent={handleToggleSmartIndent}
         currentTheme={activeTheme}
         onOpenInstallModal={() => setIsInstallModalOpen(true)}
+        onOpenCustomXml={() => setIsCustomXmlOpen(true)}
         isInstalled={isInstalled}
       />
 

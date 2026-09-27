@@ -9,18 +9,20 @@ import {
   FilePlus,
   Trash2,
   Edit3,
-  ArrowDown,
-  ArrowUp,
+  Download,
+  Upload,
   X,
   FileCode,
   Check,
   FolderOpen,
   Code,
   RotateCcw,
-  Github
+  Github,
+  FileCheck
 } from 'lucide-react';
 import { ScriptFile, EditorTheme, SupportedLanguage } from '../types/editor';
 import { LANGUAGE_EXTENSIONS, EXTENSION_TO_LANG } from '../utils/defaultFiles';
+import { getSavedCustomLanguages } from '../utils/customLanguageParser';
 
 interface Props {
   isOpen: boolean;
@@ -35,6 +37,7 @@ interface Props {
   onExportFile: (file: ScriptFile) => void;
   onImportFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenGitHub?: () => void;
+  onOpenCustomXml?: () => void;
   theme: EditorTheme;
 }
 
@@ -51,6 +54,7 @@ export const FileDrawer: React.FC<Props> = ({
   onExportFile,
   onImportFile,
   onOpenGitHub,
+  onOpenCustomXml,
   theme
 }) => {
   const [isCreating, setIsCreating] = useState(false);
@@ -192,33 +196,26 @@ export const FileDrawer: React.FC<Props> = ({
                 </button>
               )}
 
+              {/* Import Button (Icon only: arrow pointing down into box) */}
               <label
                 title="Import code, XML, or markdown file"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all active:scale-95 hover:opacity-90 shadow-2xs shrink-0"
+                className="flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-medium cursor-pointer transition-all active:scale-95 hover:opacity-90 shadow-2xs shrink-0"
                 style={{
                   backgroundColor: theme.surface,
                   borderColor: theme.surfaceBorder,
-                  color: theme.text
+                  color: theme.isDark ? '#38bdf8' : '#0284c7'
                 }}
               >
-                <div
-                  className="flex h-4 w-4 items-center justify-center rounded shrink-0"
-                  style={{
-                    backgroundColor: theme.isDark ? 'rgba(56, 189, 248, 0.18)' : 'rgba(14, 165, 233, 0.15)',
-                    color: '#0284c7'
-                  }}
-                >
-                  <ArrowDown className="h-3 w-3 stroke-[2.5]" />
-                </div>
-                <span className="text-[11px] font-semibold">Import</span>
+                <Download className="h-3.5 w-3.5 stroke-[2.2]" />
                 <input
                   type="file"
                   className="hidden"
-                  accept=".js,.ts,.py,.sh,.html,.css,.json,.yaml,.yml,.sql,.md,.xml,.svg,.c,.cpp,.cs,.java,.rs,.go,.php,.rb,.lua,.ini,.txt"
+                  accept=".js,.ts,.py,.sh,.html,.css,.json,.yaml,.yml,.sql,.md,.xml,.svg,.ks,.c,.cpp,.cs,.java,.rs,.go,.php,.rb,.lua,.ini,.txt"
                   onChange={onImportFile}
                 />
               </label>
 
+              {/* Export Button (Icon only: arrow pointing up out of box) */}
               {files.find((f) => f.id === activeFileId) && (
                 <button
                   onClick={() => {
@@ -226,23 +223,30 @@ export const FileDrawer: React.FC<Props> = ({
                     if (f) onExportFile(f);
                   }}
                   title="Export active script file"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all active:scale-95 hover:opacity-90 shadow-2xs shrink-0"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-medium transition-all active:scale-95 hover:opacity-90 shadow-2xs shrink-0"
                   style={{
                     backgroundColor: theme.surface,
                     borderColor: theme.surfaceBorder,
-                    color: theme.text
+                    color: theme.isDark ? '#c084fc' : '#9333ea'
                   }}
                 >
-                  <div
-                    className="flex h-4 w-4 items-center justify-center rounded shrink-0"
-                    style={{
-                      backgroundColor: theme.isDark ? 'rgba(168, 85, 247, 0.18)' : 'rgba(147, 51, 234, 0.15)',
-                      color: '#9333ea'
-                    }}
-                  >
-                    <ArrowUp className="h-3 w-3 stroke-[2.5]" />
-                  </div>
-                  <span className="text-[11px] font-semibold">Export</span>
+                  <Upload className="h-3.5 w-3.5 stroke-[2.2]" />
+                </button>
+              )}
+
+              {/* Import XML Language Definition Button (Icon only to avoid horizontal scrolling) */}
+              {onOpenCustomXml && (
+                <button
+                  onClick={onOpenCustomXml}
+                  title="Import XML Language Definition (custom syntax highlighting)"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-medium transition-all active:scale-95 hover:opacity-90 shadow-2xs shrink-0"
+                  style={{
+                    backgroundColor: theme.surface,
+                    borderColor: theme.surfaceBorder,
+                    color: theme.isDark ? '#4ade80' : '#16a34a'
+                  }}
+                >
+                  <FileCode className="h-3.5 w-3.5 stroke-[2.2]" />
                 </button>
               )}
             </div>
@@ -308,6 +312,15 @@ export const FileDrawer: React.FC<Props> = ({
                     <option value="bash">Bash Shell (.sh)</option>
                     <option value="sql">SQL (.sql)</option>
                   </optgroup>
+                  {getSavedCustomLanguages().length > 0 && (
+                    <optgroup label="Custom XML Languages">
+                      {getSavedCustomLanguages().map((cl) => (
+                        <option key={cl.id} value={cl.id}>
+                          {cl.name} (.{cl.extensions[0] || 'txt'})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                   <optgroup label="Config & Text">
                     <option value="ini">INI / Conf (.ini)</option>
                     <option value="plaintext">Plain Text (.txt)</option>

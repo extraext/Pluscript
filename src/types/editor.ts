@@ -25,7 +25,9 @@ export type SupportedLanguage =
   | 'ruby'
   | 'lua'
   | 'ini'
-  | 'plaintext';
+  | 'kos'
+  | 'plaintext'
+  | (string & {});
 
 export interface GitHubFileMetadata {
   owner: string;

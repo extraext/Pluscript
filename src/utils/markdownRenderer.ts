@@ -3,6 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { highlightCodeLines } from './syntaxHighlighter';
+import { SupportedLanguage } from '../types/editor';
+import { THEMES } from './themes';
+
 export function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -139,7 +143,21 @@ export function renderMarkdownToHtml(markdown: string, isDark: boolean = true): 
     if (line.startsWith('```')) {
       if (inCodeBlock) {
         // Close code block
-        const codeContent = escapeHtml(codeBlockBuffer.join('\n'));
+        const rawCode = codeBlockBuffer.join('\n');
+        let highlightedCode = '';
+        if (codeBlockLang) {
+          try {
+            const previewTheme = isDark
+              ? (THEMES.graphite || Object.values(THEMES)[0])
+              : (THEMES.notepadClassic || Object.values(THEMES)[0]);
+            highlightedCode = highlightCodeLines(rawCode, codeBlockLang.toLowerCase() as SupportedLanguage, previewTheme).join('\n');
+          } catch {
+            highlightedCode = escapeHtml(rawCode);
+          }
+        } else {
+          highlightedCode = escapeHtml(rawCode);
+        }
+
         htmlOutput.push(`
           <div class="my-3 overflow-hidden rounded-xl border ${
             isDark ? 'border-neutral-800 bg-[#121316]' : 'border-neutral-300 bg-neutral-100'
@@ -153,7 +171,7 @@ export function renderMarkdownToHtml(markdown: string, isDark: boolean = true): 
             }
             <pre class="overflow-x-auto p-3 font-mono text-[12px] leading-relaxed ${
               isDark ? 'text-neutral-200' : 'text-neutral-800'
-            }"><code>${codeContent}</code></pre>
+            }"><code>${highlightedCode}</code></pre>
           </div>
         `);
         codeBlockBuffer = [];

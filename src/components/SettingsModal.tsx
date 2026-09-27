@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Palette, Check, Download, Smartphone } from 'lucide-react';
+import { X, Palette, Check, Download, Smartphone, FileCode } from 'lucide-react';
 import { EditorTheme, ThemeId } from '../types/editor';
 import { THEMES } from '../utils/themes';
 
@@ -24,6 +24,7 @@ interface Props {
   onToggleSmartIndent: () => void;
   currentTheme: EditorTheme;
   onOpenInstallModal?: () => void;
+  onOpenCustomXml?: () => void;
   isInstalled?: boolean;
 }
 
@@ -42,6 +43,7 @@ export const SettingsModal: React.FC<Props> = ({
   onToggleSmartIndent,
   currentTheme,
   onOpenInstallModal,
+  onOpenCustomXml,
   isInstalled
 }) => {
   return (
@@ -306,6 +308,56 @@ export const SettingsModal: React.FC<Props> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Custom Language Definitions */}
+              {onOpenCustomXml && (
+                <div className="space-y-2 pt-1 border-t" style={{ borderColor: currentTheme.surfaceBorder }}>
+                  <div className="font-semibold uppercase tracking-wider text-[11px]" style={{ color: currentTheme.textMuted }}>
+                    Languages &amp; Syntax
+                  </div>
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenCustomXml();
+                    }}
+                    className="w-full flex items-center justify-between rounded-xl border p-3 text-left transition-all active:scale-[0.98]"
+                    style={{
+                      backgroundColor: currentTheme.surface,
+                      borderColor: currentTheme.surfaceBorder
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                        style={{
+                          backgroundColor: currentTheme.isDark ? 'rgba(56, 189, 248, 0.2)' : 'rgba(14, 165, 233, 0.15)',
+                          color: '#0284c7'
+                        }}
+                      >
+                        <FileCode className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-xs" style={{ color: currentTheme.text }}>
+                          Custom XML Syntax Definition
+                        </span>
+                        <span className="text-[10px]" style={{ color: currentTheme.textMuted }}>
+                          Import or manage XML syntax definitions (kOS, custom DSLs)
+                        </span>
+                      </div>
+                    </div>
+                    <span
+                      className="px-2 py-0.5 rounded text-[10px] font-semibold border"
+                      style={{
+                        backgroundColor: currentTheme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                        borderColor: currentTheme.surfaceBorder,
+                        color: currentTheme.text
+                      }}
+                    >
+                      Import
+                    </span>
+                  </button>
+                </div>
+              )}
 
               {/* App & Offline Installation */}
               {onOpenInstallModal && (

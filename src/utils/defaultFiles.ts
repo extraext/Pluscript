@@ -57,6 +57,7 @@ export const LANGUAGE_EXTENSIONS: Record<string, string> = {
   ruby: '.rb',
   lua: '.lua',
   ini: '.ini',
+  kos: '.ks',
   plaintext: '.txt'
 };
 
@@ -104,6 +105,8 @@ export const EXTENSION_TO_LANG: Record<string, SupportedLanguage> = {
   ini: 'ini',
   conf: 'ini',
   env: 'ini',
+  ks: 'kos',
+  kos: 'kos',
   txt: 'plaintext',
   log: 'plaintext'
 };

@@ -507,6 +507,34 @@ json.dumps(_pluscript_images)
       return { logs, durationMs, status: 'success' };
     }
 
+    if (language === 'kos' || language === 'ks') {
+      addLog('info', '[kOS Kerbal Operating System v1.4.0 Engine]');
+      const lines = code.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('//')) continue;
+        if (trimmed.toLowerCase().startsWith('print ')) {
+          const match = trimmed.match(/^print\s+(.*?)\.?$/i);
+          if (match) {
+            let msg = match[1].trim();
+            if ((msg.startsWith('"') && msg.endsWith('"')) || (msg.startsWith("'") && msg.endsWith("'"))) {
+              msg = msg.substring(1, msg.length - 1);
+            }
+            addLog('stdout', msg);
+          }
+        } else if (trimmed.toLowerCase().startsWith('clearscreen')) {
+          addLog('info', '[Terminal Cleared]');
+        } else if (trimmed.toLowerCase().startsWith('stage')) {
+          addLog('stdout', '🚀 [Stage Separated]');
+        } else if (trimmed.toLowerCase().startsWith('lock ')) {
+          addLog('info', `Locked control: ${trimmed.substring(5).replace(/\.$/, '')}`);
+        }
+      }
+      const durationMs = Math.round((performance.now() - startTime) * 100) / 100;
+      addLog('info', `Program completed successfully (${durationMs}ms)`);
+      return { logs, durationMs, status: 'success' };
+    }
+
     // Generic fallback for markdown/lua
     addLog('info', `[Interpreting ${language.toUpperCase()} file]`);
     addLog('stdout', `Total lines: ${code.split('\n').length}, characters: ${code.length}`);

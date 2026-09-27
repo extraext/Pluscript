@@ -4,6 +4,7 @@
  */
 
 import { SupportedLanguage, EditorTheme } from '../types/editor';
+import { getSavedCustomLanguages, CustomLanguageDefinition } from './customLanguageParser';
 
 export function escapeHtml(str: string): string {
   return str
@@ -13,6 +14,28 @@ export function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+// Built-in kOS keyword definition
+const KOS_KEYWORDS = {
+  control: new Set([
+    'if', 'else', 'until', 'for', 'in', 'while', 'loop', 'break',
+    'parameter', 'return', 'declare', 'local', 'global', 'function', 'preserve'
+  ]),
+  commands: new Set([
+    'set', 'to', 'lock', 'unlock', 'toggle', 'on', 'off', 'run', 'once',
+    'compile', 'list', 'print', 'at', 'clearscreen', 'stage', 'wait',
+    'when', 'then', 'add', 'remove', 'log', 'copy', 'delete', 'rename', 'switch'
+  ]),
+  boundVariables: new Set([
+    'throttle', 'steering', 'wheelthrottle', 'wheelsteering', 'ship', 'target',
+    'body', 'addons', 'allprogs', 'core', 'heading', 'prograde', 'retrograde',
+    'up', 'down', 'north', 'south', 'east', 'west', 'velocity', 'altitude',
+    'apoapsis', 'periapsis', 'eta'
+  ]),
+  constants: new Set([
+    'true', 'false', 'pi', 'e', 'g'
+  ])
+};
 
 // Comprehensive keyword sets
 const KEYWORDS: Record<string, Set<string>> = {
@@ -75,6 +98,10 @@ const KEYWORDS: Record<string, Set<string>> = {
 // High-performance LRU line cache for instantaneous editing even with 10,000+ line files
 const LINE_CACHE = new Map<string, string>();
 const MAX_CACHE_SIZE = 15000;
+
+export function clearLineHighlightCache(): void {
+  LINE_CACHE.clear();
+}
 
 function getCachedHighlight(
   line: string,
@@ -493,7 +520,7 @@ function highlightYamlLine(line: string, theme: EditorTheme): string {
 }
 
 // ----------------------------------------------------
-// STANDARD PROGRAMMING CODE HIGHLIGHTER (JS, TS, PY, C, C++, RUST, GO, BASH, SQL, ETC.)
+// STANDARD PROGRAMMING CODE HIGHLIGHTER (JS, TS, PY, C, C++, RUST, GO, BASH, SQL, KOS, ETC.)
 // ----------------------------------------------------
 function highlightStandardCodeLine(
   line: string,
@@ -524,7 +551,7 @@ function highlightStandardCodeLine(
       );
     }
   } else {
-    // C, JS, TS, Java, C#, Go, Rust, PHP comments
+    // C, JS, TS, Java, C#, Go, Rust, PHP, kOS comments
     const slashIdx = line.indexOf('//');
     if (slashIdx !== -1) {
       const codePart = line.substring(0, slashIdx);
@@ -548,6 +575,90 @@ function tokenizeCode(
   theme: EditorTheme
 ): string {
   const { syntax } = theme;
+
+  // Check if there is an imported custom language matching this id
+  const customLangs = getSavedCustomLanguages();
+  const customLang = customLangs.find(
+    (l) => l.id.toLowerCase() === language.toLowerCase() || l.extensions.includes(language.toLowerCase())
+  );
+
+  // kOS or custom language matching
+  if (language === 'kos' || language === 'ks' || (customLang && customLang.id === 'kos')) {
+    // kOS tokens (case-insensitive for commands and telemetry)
+    const kosTokenRegex = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?\b|\b[a-zA-Z_]\w*\b|[+\-*/^=<>:.]|\s+|[^\s\w]+)/g;
+    return line.replace(kosTokenRegex, (token) => {
+      // Strings
+      if ((token.startsWith('"') && token.endsWith('"') && token.length > 1) || (token.startsWith("'") && token.endsWith("'") && token.length > 1)) {
+        return `<span style="color: ${syntax.string};">${escapeHtml(token)}</span>`;
+      }
+      // Numbers
+      if (/^\d+(?:\.\d+)?$/.test(token)) {
+        return `<span style="color: ${syntax.number};">${escapeHtml(token)}</span>`;
+      }
+      const lower = token.toLowerCase();
+      // Flow control
+      if (KOS_KEYWORDS.control.has(lower)) {
+        return `<span style="color: ${syntax.keyword}; font-weight: 700;">${escapeHtml(token)}</span>`;
+      }
+      // Core Commands
+      if (KOS_KEYWORDS.commands.has(lower)) {
+        return `<span style="color: #60a5fa; font-weight: 600;">${escapeHtml(token)}</span>`;
+      }
+      // Bound Variables & Flight Controls
+      if (KOS_KEYWORDS.boundVariables.has(lower)) {
+        return `<span style="color: #c084fc; font-weight: 600;">${escapeHtml(token)}</span>`;
+      }
+      // Constants & Booleans
+      if (KOS_KEYWORDS.constants.has(lower)) {
+        return `<span style="color: ${syntax.boolean}; font-weight: 600;">${escapeHtml(token)}</span>`;
+      }
+      // Operators and punctuation
+      if (/[+\-*/^=<>:.]/.test(token)) {
+        return `<span style="color: ${syntax.operator}; font-weight: 600;">${escapeHtml(token)}</span>`;
+      }
+      // Identifiers
+      if (/^[a-zA-Z_]\w*$/.test(token)) {
+        return `<span style="color: ${syntax.variable};">${escapeHtml(token)}</span>`;
+      }
+      return escapeHtml(token);
+    });
+  }
+
+  // Generic custom language from XML definition
+  if (customLang) {
+    const customRegex = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?\b|\b[a-zA-Z_]\w*\b|[^\s\w]|\s+)/g;
+    return line.replace(customRegex, (token) => {
+      if ((token.startsWith('"') && token.endsWith('"')) || (token.startsWith("'") && token.endsWith("'"))) {
+        return `<span style="color: ${syntax.string};">${escapeHtml(token)}</span>`;
+      }
+      if (/^\d+(?:\.\d+)?$/.test(token)) {
+        return `<span style="color: ${syntax.number};">${escapeHtml(token)}</span>`;
+      }
+      const checkWord = customLang.caseSensitive ? token : token.toLowerCase();
+      for (const group of customLang.keywordGroups) {
+        const found = group.words.some((w) => (customLang.caseSensitive ? w === checkWord : w.toLowerCase() === checkWord));
+        if (found) {
+          const color = group.color === 'control'
+            ? syntax.keyword
+            : group.color === 'commands'
+            ? '#60a5fa'
+            : group.color === 'boundvariables'
+            ? '#c084fc'
+            : group.color === 'constants'
+            ? syntax.boolean
+            : '#38bdf8';
+          return `<span style="color: ${color}; font-weight: 600;">${escapeHtml(token)}</span>`;
+        }
+      }
+      if (customLang.operators.includes(token)) {
+        return `<span style="color: ${syntax.operator}; font-weight: 600;">${escapeHtml(token)}</span>`;
+      }
+      if (/^[a-zA-Z_]\w*$/.test(token)) {
+        return `<span style="color: ${syntax.variable};">${escapeHtml(token)}</span>`;
+      }
+      return escapeHtml(token);
+    });
+  }
 
   // Pick keyword set
   let keySet = KEYWORDS.js;
