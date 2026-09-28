@@ -42,4 +42,4 @@ Edit, run, and commit code from your GitHub repositories on virtually any device
 - Integrated toggleable options like Line Wrap, Smart Indent, and more.
 - Adjustable font size.
 
-Credits to [Google AI Studio](https://google.ai.studio) for helping with most of the project. 
+Credits to [Google AI Studio](https://aistudio.google.com) for helping with most of the project. 
