@@ -40,4 +40,6 @@ Edit, run, and commit code from your GitHub repositories on virtually any device
 - Accessory bar for quick symbols, undo/redo, and indentation made for integration in almost any device with a proper OS. 
 - Multiple dark themes and a light theme.
 - Integrated toggleable options like Line Wrap, Smart Indent, and more.
-- Adjustable font size. 
+- Adjustable font size.
+
+Credits to [Google AI Studio](https://google.ai.studio) for helping with most of the project. 
